@@ -1,0 +1,84 @@
+import gevent
+import gevent.monkey
+
+gevent.monkey.patch_all()
+import requests
+from lxml import etree
+import re
+import json
+import time
+import csv
+
+cotents_all=[]
+def down(url):
+    html = requests.get(url,timeout=30)
+    html.encoding="utf-8"
+    return etree.HTML(html.text)
+
+
+# def main(word):
+word_lists=["益生菌","营养品"]
+for m in range(len(word_lists)):
+    key_word=word_lists[m]
+    url1="https://www.mia.com/search/s?k={}".format(key_word)
+    prouduct_html=down(url1)
+    # for j in range(1):
+    try:
+        for j in range(len(prouduct_html.xpath('//div[contains(@class,"block")]'))):
+            prouduct_price=prouduct_html.xpath('//div[contains(@class,"block")][{}]//span[contains(@class,"Tahoma")]/text()'.format(j+1))[0]
+            prouduct_title=prouduct_html.xpath('//div[contains(@class,"block")][{}]//div[contains(@class,"bmfo")]//p/a/@title'.format(j+1))[0]
+            prouduct_url="https://www.miyabaobei.hk"+prouduct_html.xpath('//div[contains(@class,"block")][{}]//div[contains(@class,"bmfo")]//p/a/@href'.format(j+1))[0]
+            print(prouduct_url)
+            detil_html=down(prouduct_url)
+            if len(detil_html.xpath('//div[@class="moduleFixed"]//li[2]/text()')[0]) >3:
+                print(detil_html.xpath('//div[@class="moduleFixed"]//li[2]/text()')[0])
+                comment_num=re.findall('\((.*?)\)',detil_html.xpath('//div[@class="moduleFixed"]//li[2]/text()')[0])[0]
+                for k in range(len(detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")]'))):
+                    name=detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")][{}]//div[@class="photo_txt"]/span[1]/text()'.format(k+1))[0]
+                    if detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")][{}]//div[@class="photo_txt"]/span[2]/text()'.format(k+1)):
+                        sex=detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")][{}]//div[@class="photo_txt"]/span[2]/text()'.format(k+1))[0]
+                    else:
+                        sex="未设置"
+                    if detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")][{}]//div[@class="photo_txt"]/span[3]/text()'.format(k+1)):
+                        age=detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")][{}]//div[@class="photo_txt"]/span[3]/text()'.format(k+1))[0]
+                    else:
+                        age="未设置"
+                    content=detil_html.xpath('//div[@class="koubei_con"]/div[contains(@class,"koubei_in")][{}]//p[contains(@class,"pinglun_con")]/text()'.format(k+1))[0].strip()
+                    cotents_all.append([key_word,prouduct_title,prouduct_url,comment_num,prouduct_price,name,sex,age,content])
+                    print([key_word,prouduct_title,prouduct_url,comment_num,prouduct_price,name,sex,age,content])
+            else:
+                cotents_all.append([key_word,prouduct_title, prouduct_url, 0, prouduct_price, 0, 0, 0, 0])
+                print([key_word,prouduct_title, prouduct_url, 0, prouduct_price, 0, 0, 0, 0])
+
+    except:
+        with open("霸菱蜜芽10.csv", "w", encoding="utf-8", newline="") as f:
+            k = csv.writer(f, dialect="excel")
+            k.writerow(["关键词", "标题", "产品链接", "评论数", "产品价格", "评论人", "宝贝性别", "宝贝年龄", "评论内容"])
+
+            for list in cotents_all:
+                k.writerow(list)
+
+        pass
+
+
+# if __name__ == "__main__":
+#     content_all =["维生素","鱼肝油"," DHA","益生菌","钙铁锌","营养品","保健品"]
+#     # content_all =["怡丽丝尔"]
+#     # content_all =["Lays Stax","乐事无限","乐事 桶","Calbee 麦片","卡乐比 麦片","上好佳 薯片","薯条"]
+#     length=len(content_all)
+#     xclist = []  #构建协程链接池
+#     for w in range(length):
+#         xclist.append(gevent.spawn(main,content_all[w]))
+#     print(xclist)
+#
+#
+#
+#     gevent.joinall(xclist)
+print(cotents_all)
+with open("霸菱蜜芽11.csv", "w", encoding="utf-8", newline="") as f:
+    k = csv.writer(f, dialect="excel")
+    k.writerow(["关键词","标题", "产品链接",  "评论数", "产品价格", "评论人","宝贝性别", "宝贝年龄", "评论内容"])
+
+    for list in cotents_all:
+        k.writerow(list)
+
